@@ -1,0 +1,200 @@
+{
+  "engine": {
+    "outputIntervalMs": 10,
+    "keepTicking": true,
+    "zone": "America/New_York",
+    "alertIdBytes": 6,
+    "shards": 4,
+    "timeBasis": "EVENT"
+  },
+  "rules": { "type": "file", "path": "rules.json", "refreshMs": 30000 },
+  "sources": [
+    { "name": "replay", "type": "jsonl-mux", "path": "scenario.jsonl", "lineDelayMs": 100 }
+  ],
+  "sink": { "type": "jsonl", "path": "-" },
+  "streams": [
+    {
+      "name": "pnl-position",
+      "source": "tick-pnl",
+      "timestamp": "timestamp",
+      "key": {
+        "scope": "POSITION",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": "margin_type",
+          "instrument_id": "instrument_id.value",
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "TOTAL_PNL": {
+          "subject": { "name": "total_pnl", "value": "total_pnl" },
+          "compare": { "name": "sod_equity", "value": "sod_equity" }
+        },
+        "PRICE": {
+          "subject": { "name": "price", "value": "price.value" },
+          "compare": { "name": "sod_price", "value": "sod_price.value" }
+        },
+        "MARKET_VALUE": {
+          "subject": { "name": "gross_market_value", "value": "gross_market_value" },
+          "compare": { "name": "sod_gross_market_value", "value": "sod_gmv" },
+          "normalize": false
+        }
+      }
+    },
+    {
+      "name": "equity-unit",
+      "source": "tick-equity",
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": "margin_type",
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "TOTAL_PNL": {
+          "subject": { "name": "total_pnl", "value": "total_pnl" },
+          "compare": { "name": "sod_equity", "value": "sod_equity" }
+        },
+        "MARKET_VALUE": {
+          "subject": { "name": "gross_market_value", "value": "gross_market_value" },
+          "compare": { "name": "sod_gross_market_value", "value": "sod_gmv" }
+        }
+      }
+    },
+    {
+      "name": "regt-excess",
+      "source": "tick-regt",
+      "timestamp": "timestamp",
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": { "const": "MARGIN_TYPE_REGT" },
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "EXCESS": {
+          "subject": { "name": "excess", "value": { "min": ["house_excess", "sma"] } },
+          "compare": { "name": "equity", "value": "equity" }
+        }
+      }
+    },
+    {
+      "name": "pm-excess",
+      "source": "pm-equity-intraday-results",
+      "steps": [
+        { "filter": { "field": "payload.message_type", "op": "eq", "value": "PM_RESULT_MESSAGE_TYPE_MESSAGE" } },
+        { "unwrap": "payload.value" }
+      ],
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "entity_id",
+          "unit_type": { "const": "UNIT_TYPE_ENTITY" },
+          "margin_type": { "const": "MARGIN_TYPE_PM" }
+        }
+      },
+      "subjects": {
+        "EXCESS": {
+          "subject": { "name": "excess", "value": "excess" },
+          "compare": { "name": "equity", "value": "equity" },
+          "normalize": false
+        }
+      }
+    },
+    {
+      "name": "pmv2-excess",
+      "source": "pmv2-intraday-margin-results",
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": "margin_type",
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "EXCESS": {
+          "subject": { "name": "excess", "value": { "coalesce": ["summary.common.effective_excess", { "const": "0" }] } },
+          "compare": { "name": "equity", "value": { "coalesce": ["summary.common.equity", { "const": "0" }] } },
+          "normalize": false
+        }
+      }
+    },
+    {
+      "name": "liquidation-non-large-cap",
+      "source": "tick-equity",
+      "steps": [
+        { "filter": { "all": [
+          { "field": "org_ids", "op": "containsAny", "values": [25] },
+          { "field": "unit_id", "op": "notIn", "values": [100, 1089, 1599, 3129] },
+          { "field": "margin_type", "op": "eq", "value": "MARGIN_TYPE_REGT" },
+          { "field": "equity", "op": "lt", "value": "5000000" }
+        ] } },
+        { "explode": { "path": "issuers", "as": "issuer" } },
+        { "filter": { "field": "issuer.value.market_capitalization.value", "op": "lt", "value": "3000000000" } }
+      ],
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": "margin_type",
+          "underlying_instrument_id": "issuer.key",
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "NON_LARGE_CAP_LIQUIDATION": {
+          "subject": { "name": "equity", "value": "equity" },
+          "compare": { "name": "gross_market_value", "value": "issuer.value.market_value.gross_market_value" }
+        }
+      }
+    },
+    {
+      "name": "liquidation-large-cap",
+      "source": "tick-equity",
+      "steps": [
+        { "filter": { "all": [
+          { "field": "org_ids", "op": "containsAny", "values": [25] },
+          { "field": "unit_id", "op": "notIn", "values": [100, 1089, 1599, 3129] },
+          { "field": "margin_type", "op": "eq", "value": "MARGIN_TYPE_REGT" },
+          { "field": "equity", "op": "lt", "value": "5000000" }
+        ] } },
+        { "explode": { "path": "issuers", "as": "issuer" } },
+        { "filter": { "field": "issuer.value.market_capitalization.value", "op": "gte", "value": "3000000000" } }
+      ],
+      "key": {
+        "scope": "UNIT",
+        "date": "date",
+        "attributes": {
+          "unit_id": "unit_id",
+          "unit_type": "unit_type",
+          "margin_type": "margin_type",
+          "underlying_instrument_id": "issuer.key",
+          "netting_id": "netting_id"
+        }
+      },
+      "subjects": {
+        "LARGE_CAP_LIQUIDATION": {
+          "subject": { "name": "equity", "value": "equity" },
+          "compare": { "name": "gross_market_value", "value": "issuer.value.market_value.gross_market_value" }
+        }
+      }
+    }
+  ]
+}

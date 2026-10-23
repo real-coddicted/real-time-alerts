@@ -1,0 +1,56 @@
+{
+  "rules": [
+    { "id": "R5",  "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_PM" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.05", "expiryMs": 14400000 } },
+    { "id": "R6",  "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_PM" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.10", "expiryMs": 14400000 } },
+    { "id": "R7",  "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_PM" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.20", "expiryMs": 14400000 } },
+    { "id": "R8",  "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_PM" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.40", "expiryMs": 14400000 } },
+
+    { "id": "R9",  "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.10", "expiryMs": 14400000 } },
+    { "id": "R10", "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.20", "expiryMs": 14400000 } },
+    { "id": "R11", "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.40", "expiryMs": 14400000 } },
+    { "id": "R12", "version": 1, "subject": "TOTAL_PNL", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.60", "expiryMs": 14400000 } },
+
+    { "id": "R13", "version": 1, "subject": "EXCESS", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.90", "expiryMs": 14400000 } },
+    { "id": "R14", "version": 1, "subject": "EXCESS", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-1", "expiryMs": 14400000 } },
+    { "id": "R15", "version": 1, "subject": "EXCESS", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_REGT" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-1.1", "expiryMs": 14400000 } },
+
+    { "id": "R16", "version": 1, "subject": "PRICE", "scope": "POSITION",
+      "fire": { "type": "RELATIVE", "operator": "LT", "value": "-0.20", "expiryMs": 14400000 } },
+    { "id": "R17", "version": 1, "subject": "PRICE", "scope": "POSITION",
+      "fire": { "type": "RELATIVE", "operator": "LT", "value": "-0.40", "expiryMs": 14400000 } },
+
+    { "id": "R18", "version": 1, "subject": "TOTAL_PNL", "scope": "POSITION", "severity": "HIGH",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.20", "expiryMs": 14400000 },
+      "resolve": { "type": "RATIO", "operator": "GT", "value": "-0.20", "minTimeToResolveMs": 300 } },
+
+    { "id": "R19", "version": 1, "subject": "EXCESS", "scope": "UNIT", "match": { "margin_type": "MARGIN_TYPE_PM" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.90", "expiryMs": 14400000 } },
+
+    { "id": "R20", "version": 1, "subject": "TOTAL_PNL", "scope": "POSITION",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-5.00", "expiryMs": 14400000 } },
+
+    { "id": "R21", "version": 1, "subject": "TOTAL_PNL", "scope": "ENTITY",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.10", "expiryMs": 14400000 } },
+    { "id": "R22", "version": 1, "subject": "TOTAL_PNL", "scope": "INVALID",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-0.10", "expiryMs": 14400000 } },
+
+    { "id": "R23", "version": 1, "subject": "MARKET_VALUE", "scope": "POSITION",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "1", "expiryMs": 14400000 } },
+    { "id": "R24", "version": 1, "subject": "MARKET_VALUE", "scope": "UNIT",
+      "fire": { "type": "RATIO", "operator": "LT", "value": "0.1", "expiryMs": 14400000 } },
+
+    { "id": "R25", "version": 1, "subject": "LARGE_CAP_LIQUIDATION", "scope": "UNIT", "match": { "unit_type": "UNIT_TYPE_ENTITY" },
+      "fire": { "type": "RATIO", "operator": "LT", "value": "-10", "expiryMs": -1 } }
+  ]
+}
