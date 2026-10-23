@@ -4,6 +4,7 @@ import io.alerting.model.Threshold;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Delegates to the first evaluator that accepts the threshold type; unknown types are never met. */
@@ -16,7 +17,7 @@ public final class ChainedThresholdEvaluator implements ThresholdEvaluator {
 
     /** ABSOLUTE, RELATIVE and RATIO, plus any extra evaluators (checked first). */
     public static ChainedThresholdEvaluator standard(ThresholdEvaluator... extra) {
-        List<ThresholdEvaluator> all = new ArrayList<>(List.of(extra));
+        List<ThresholdEvaluator> all = new ArrayList<>(Arrays.asList(extra));
         all.add(new AbsoluteThresholdEvaluator());
         all.add(new RelativeThresholdEvaluator());
         all.add(new RatioThresholdEvaluator());

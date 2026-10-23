@@ -1,26 +1,25 @@
 package io.alerting.rules;
 
+import io.alerting.config.Resources;
 import io.alerting.model.Rule;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
-/** Reads rules from a JSON file on every refresh, so editing the file updates rules live. */
+/** Reads rules from a JSON file ({@code classpath:} or filesystem path) on every refresh. */
 public final class JsonFileRuleProvider implements RuleProvider {
-    private final Path path;
+    private final String location;
 
-    public JsonFileRuleProvider(Path path) {
-        this.path = path;
+    public JsonFileRuleProvider(String location) {
+        this.location = location;
     }
 
     @Override
     public List<Rule> fetchRules() throws Exception {
-        return RulesParser.parse(Files.readString(path));
+        return RulesParser.parse(Resources.read(location));
     }
 
     @Override
     public String toString() {
-        return "file:" + path;
+        return "file:" + location;
     }
 }

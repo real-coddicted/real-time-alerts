@@ -23,15 +23,14 @@ public final class Expressions {
     private Expressions() {}
 
     public static Function<Map<String, Object>, Object> compile(Object spec) {
-        if (spec instanceof String path) {
-            String[] parts = path.split("\\.");
+        if (spec instanceof String) {
+            String[] parts = ((String) spec).split("\\.");
             return r -> get(r, parts);
         }
         if (spec instanceof Number || spec instanceof Boolean) {
             return r -> spec;
         }
-        if (!(spec instanceof Map)) throw new IllegalArgumentException("invalid expression: " + spec);
-        Map<String, Object> m = JsonAccess.asMap(spec, "expression");
+        Map<String, Object> m = JsonAccess.asMap(spec, "expression " + spec);
         if (m.containsKey("const")) {
             Object v = m.get("const");
             return r -> v;
@@ -49,7 +48,7 @@ public final class Expressions {
             List<Function<Map<String, Object>, Object>> args = compileAll(m.get(min ? "min" : "max"));
             return r -> {
                 BigDecimal best = null;
-                for (var a : args) {
+                for (Function<Map<String, Object>, Object> a : args) {
                     BigDecimal v = Values.toDecimal(a.apply(r));
                     if (best == null || (min ? v.compareTo(best) < 0 : v.compareTo(best) > 0)) best = v;
                 }
@@ -59,7 +58,7 @@ public final class Expressions {
         if (m.containsKey("coalesce")) {
             List<Function<Map<String, Object>, Object>> args = compileAll(m.get("coalesce"));
             return r -> {
-                for (var a : args) {
+                for (Function<Map<String, Object>, Object> a : args) {
                     Object v = a.apply(r);
                     if (v != null) return v;
                 }
@@ -70,18 +69,21 @@ public final class Expressions {
     }
 
     private static List<Function<Map<String, Object>, Object>> compileAll(Object spec) {
-        if (!(spec instanceof List<?> list) || list.isEmpty()) throw new IllegalArgumentException("expected a non-empty array: " + spec);
+        if (!(spec instanceof List) || ((List<?>) spec).isEmpty()) {
+            throw new IllegalArgumentException("expected a non-empty array: " + spec);
+        }
         List<Function<Map<String, Object>, Object>> out = new ArrayList<>();
-        for (Object o : list) out.add(compile(o));
+        for (Object o : (List<?>) spec) out.add(compile(o));
         return out;
     }
 
     static Object get(Object record, String[] path) {
         Object cur = record;
         for (String p : path) {
-            if (cur instanceof Map<?, ?> m) {
-                cur = m.get(p);
-            } else if (cur instanceof List<?> l) {
+            if (cur instanceof Map) {
+                cur = ((Map<?, ?>) cur).get(p);
+            } else if (cur instanceof List) {
+                List<?> l = (List<?>) cur;
                 int i;
                 try {
                     i = Integer.parseInt(p);

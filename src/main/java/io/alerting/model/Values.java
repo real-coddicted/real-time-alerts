@@ -9,8 +9,8 @@ public final class Values {
     /** Parses a decimal; {@code null} and blank strings are zero. Throws {@link NumberFormatException} otherwise. */
     public static BigDecimal toDecimal(Object v) {
         if (v == null) return BigDecimal.ZERO;
-        if (v instanceof BigDecimal d) return d;
-        if (v instanceof Number n) return new BigDecimal(n.toString());
+        if (v instanceof BigDecimal) return (BigDecimal) v;
+        if (v instanceof Number) return new BigDecimal(v.toString());
         String s = v.toString().trim();
         return s.isEmpty() ? BigDecimal.ZERO : new BigDecimal(s);
     }
@@ -31,7 +31,7 @@ public final class Values {
     /** The value as-is (raw), {@code ""} for null. */
     public static String plain(Object v) {
         if (v == null) return "";
-        if (v instanceof BigDecimal d) return d.toPlainString();
+        if (v instanceof BigDecimal) return ((BigDecimal) v).toPlainString();
         return v.toString();
     }
 

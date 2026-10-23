@@ -2,16 +2,16 @@ package io.alerting.rules;
 
 import io.alerting.model.EntityKey;
 import io.alerting.model.Rule;
-import io.alerting.testing.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static io.alerting.rules.RuleEvaluatorTest.rule;
-import static io.alerting.testing.Assert.assertEquals;
-import static io.alerting.testing.Assert.assertFalse;
-import static io.alerting.testing.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RuleCatalogTest {
     private static final String FIRE = "\"fire\":{\"type\":\"RATIO\",\"operator\":\"LT\",\"value\":\"-0.2\"}";

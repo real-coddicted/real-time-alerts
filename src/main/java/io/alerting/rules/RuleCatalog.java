@@ -2,18 +2,26 @@ package io.alerting.rules;
 
 import io.alerting.model.EntityKey;
 import io.alerting.model.Rule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Immutable snapshot of active rules, indexed by (subject, scope). */
-public final class RuleCatalog {
-    private static final System.Logger LOG = System.getLogger(RuleCatalog.class.getName());
+/**
+ * Immutable snapshot of active rules, indexed by (subject, scope). This is the rules side input value:
+ * broadcast to every worker and replaced wholesale on each successful refresh.
+ */
+public final class RuleCatalog implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private static final Logger LOG = LoggerFactory.getLogger(RuleCatalog.class);
 
     private final long version;
     private final Map<String, Rule> byId;
@@ -21,12 +29,11 @@ public final class RuleCatalog {
 
     private RuleCatalog(long version, Map<String, Rule> byId) {
         this.version = version;
-        this.byId = byId;
+        this.byId = Collections.unmodifiableMap(byId);
         Map<String, List<Rule>> index = new HashMap<>();
         byId.values().stream()
                 .sorted(Comparator.comparing(Rule::id))
                 .forEach(r -> index.computeIfAbsent(indexKey(r.subject(), r.scope()), k -> new ArrayList<>()).add(r));
-        index.replaceAll((k, v) -> List.copyOf(v));
         this.bySubjectScope = index;
     }
 
@@ -37,7 +44,7 @@ public final class RuleCatalog {
             if (!r.active()) continue;
             Rule existing = byId.get(r.id());
             if (existing != null) {
-                LOG.log(System.Logger.Level.WARNING, "duplicate rule id " + r.id() + "; keeping highest version");
+                LOG.warn("duplicate rule id {}; keeping highest version", r.id());
                 if (existing.version() >= r.version()) continue;
             }
             byId.put(r.id(), r);
@@ -77,8 +84,8 @@ public final class RuleCatalog {
         return out;
     }
 
-    /** Same active rules (deep equality)? Used to avoid needless version bumps on refresh. */
-    public boolean sameRulesAs(RuleCatalog other) {
-        return other != null && byId.equals(other.byId);
+    @Override
+    public String toString() {
+        return "RuleCatalog{v" + version + ", " + byId.size() + " rules}";
     }
 }

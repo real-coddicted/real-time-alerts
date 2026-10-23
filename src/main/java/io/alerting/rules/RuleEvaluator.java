@@ -14,7 +14,8 @@ import java.math.BigDecimal;
  * The rule algorithm (spec section 6), independent of the event type: streams turn events into a
  * {@link Metric}, this decides fire / resolve / expire.
  */
-public final class RuleEvaluator {
+public final class RuleEvaluator implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final ThresholdEvaluator thresholds;
 
     public RuleEvaluator(ThresholdEvaluator thresholds) {

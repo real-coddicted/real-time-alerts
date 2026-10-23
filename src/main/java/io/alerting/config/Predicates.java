@@ -3,6 +3,7 @@ package io.alerting.config;
 import io.alerting.json.JsonAccess;
 import io.alerting.model.Values;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,53 +33,63 @@ public final class Predicates {
 
         Function<Map<String, Object>, Object> field = Expressions.compile(JsonAccess.require(m, "field"));
         String op = JsonAccess.requireString(m, "op").toLowerCase(Locale.ROOT);
-        return switch (op) {
-            case "exists" -> r -> field.apply(r) != null;
-            case "missing" -> r -> field.apply(r) == null;
-            case "eq" -> {
+        switch (op) {
+            case "exists":
+                return r -> field.apply(r) != null;
+            case "missing":
+                return r -> field.apply(r) == null;
+            case "eq": {
                 String v = Values.canonical(JsonAccess.require(m, "value"));
-                yield r -> v.equals(Values.canonical(field.apply(r)));
+                return r -> v.equals(Values.canonical(field.apply(r)));
             }
-            case "ne" -> {
+            case "ne": {
                 String v = Values.canonical(JsonAccess.require(m, "value"));
-                yield r -> !v.equals(Values.canonical(field.apply(r)));
+                return r -> !v.equals(Values.canonical(field.apply(r)));
             }
-            case "in" -> {
+            case "in": {
                 Set<String> vs = valueSet(m);
-                yield r -> vs.contains(Values.canonical(field.apply(r)));
+                return r -> vs.contains(Values.canonical(field.apply(r)));
             }
-            case "notin" -> {
+            case "notin": {
                 Set<String> vs = valueSet(m);
-                yield r -> !vs.contains(Values.canonical(field.apply(r)));
+                return r -> !vs.contains(Values.canonical(field.apply(r)));
             }
-            case "containsany" -> {
+            case "containsany": {
                 Set<String> vs = valueSet(m);
-                yield r -> {
+                return r -> {
                     Object v = field.apply(r);
-                    if (v instanceof List<?> l) return l.stream().anyMatch(x -> vs.contains(Values.canonical(x)));
+                    if (v instanceof List) return ((List<?>) v).stream().anyMatch(x -> vs.contains(Values.canonical(x)));
                     return v != null && vs.contains(Values.canonical(v));
                 };
             }
-            case "lt", "lte", "gt", "gte" -> {
-                var threshold = Values.toDecimal(JsonAccess.require(m, "value"));
-                yield r -> {
+            case "lt":
+            case "lte":
+            case "gt":
+            case "gte": {
+                BigDecimal threshold = Values.toDecimal(JsonAccess.require(m, "value"));
+                return r -> {
                     int c = Values.toDecimal(field.apply(r)).compareTo(threshold);
-                    return switch (op) {
-                        case "lt" -> c < 0;
-                        case "lte" -> c <= 0;
-                        case "gt" -> c > 0;
-                        default -> c >= 0;
-                    };
+                    switch (op) {
+                        case "lt":
+                            return c < 0;
+                        case "lte":
+                            return c <= 0;
+                        case "gt":
+                            return c > 0;
+                        default:
+                            return c >= 0;
+                    }
                 };
             }
-            default -> throw new IllegalArgumentException("unknown predicate op: " + op);
-        };
+            default:
+                throw new IllegalArgumentException("unknown predicate op: " + op);
+        }
     }
 
     private static Predicate<Map<String, Object>> combine(Object spec, boolean all) {
-        if (!(spec instanceof List<?> list)) throw new IllegalArgumentException((all ? "all" : "any") + " must be an array");
+        if (!(spec instanceof List)) throw new IllegalArgumentException((all ? "all" : "any") + " must be an array");
         List<Predicate<Map<String, Object>>> ps = new ArrayList<>();
-        for (Object o : list) ps.add(compile(o));
+        for (Object o : (List<?>) spec) ps.add(compile(o));
         return all ? r -> ps.stream().allMatch(p -> p.test(r)) : r -> ps.stream().anyMatch(p -> p.test(r));
     }
 

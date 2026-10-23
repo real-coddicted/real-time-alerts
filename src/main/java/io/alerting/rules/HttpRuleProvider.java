@@ -3,6 +3,8 @@ package io.alerting.rules;
 import io.alerting.json.Json;
 import io.alerting.json.JsonAccess;
 import io.alerting.model.Rule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -20,10 +22,10 @@ import java.util.Set;
 /**
  * Fetches all rules from a REST endpoint returning JSON {@code {"rules": [...], "next_token": "..."}},
  * following {@code next_token} pagination ({@code page_size}, {@code page_token} query params).
- * Retries on I/O errors and HTTP 429/502/503/504 with exponential backoff.
+ * Retries on I/O errors and HTTP 429/502/503/504 with exponential backoff (spec 4.2 defaults).
  */
 public final class HttpRuleProvider implements RuleProvider {
-    private static final System.Logger LOG = System.getLogger(HttpRuleProvider.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(HttpRuleProvider.class);
     private static final Set<Integer> RETRYABLE = Set.of(429, 502, 503, 504);
 
     private final URI uri;
@@ -74,15 +76,24 @@ public final class HttpRuleProvider implements RuleProvider {
                 HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() / 100 == 2) return resp.body();
                 failure = "HTTP " + resp.statusCode();
-                if (!RETRYABLE.contains(resp.statusCode())) throw new IOException("rules API returned " + failure);
+                if (!RETRYABLE.contains(resp.statusCode())) throw new NonRetryable("rules API returned " + failure);
+            } catch (NonRetryable e) {
+                throw e;
             } catch (IOException e) {
-                if (e.getMessage() != null && e.getMessage().startsWith("rules API returned")) throw e;
                 failure = e.toString();
             }
             if (attempt >= maxAttempts) throw new IOException("rules API failed after " + attempt + " attempts: " + failure);
-            LOG.log(System.Logger.Level.WARNING, "rules API attempt " + attempt + " failed (" + failure + "), retrying in " + backoff + "ms");
+            LOG.warn("rules API attempt {} failed ({}), retrying in {}ms", attempt, failure, backoff);
             Thread.sleep(backoff);
             backoff = Math.min(maxBackoff.toMillis(), (long) (backoff * 1.5));
+        }
+    }
+
+    private static final class NonRetryable extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        NonRetryable(String message) {
+            super(message);
         }
     }
 

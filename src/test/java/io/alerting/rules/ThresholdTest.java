@@ -2,17 +2,17 @@ package io.alerting.rules;
 
 import io.alerting.model.Operator;
 import io.alerting.model.Threshold;
-import io.alerting.testing.Test;
+import org.junit.jupiter.api.Test;
 import io.alerting.threshold.ChainedThresholdEvaluator;
 import io.alerting.threshold.ThresholdResult;
 
 import java.math.BigDecimal;
 
-import static io.alerting.testing.Assert.assertEquals;
-import static io.alerting.testing.Assert.assertFalse;
-import static io.alerting.testing.Assert.assertNull;
-import static io.alerting.testing.Assert.assertThrows;
-import static io.alerting.testing.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ThresholdTest {
     private final ChainedThresholdEvaluator chain = ChainedThresholdEvaluator.standard();

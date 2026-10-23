@@ -3,6 +3,8 @@ package io.alerting.rules;
 import io.alerting.json.Json;
 import io.alerting.json.JsonAccess;
 import io.alerting.model.Rule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +15,7 @@ import java.util.Map;
  * operator, missing fields, non-numeric threshold) are logged and skipped so one bad rule cannot poison the job.
  */
 public final class RulesParser {
-    private static final System.Logger LOG = System.getLogger(RulesParser.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(RulesParser.class);
 
     private RulesParser() {}
 
@@ -23,9 +25,9 @@ public final class RulesParser {
 
     public static List<Rule> parse(Object json) {
         List<?> items;
-        if (json instanceof List<?> l) {
-            items = l;
-        } else if (json instanceof Map<?, ?>) {
+        if (json instanceof List) {
+            items = (List<?>) json;
+        } else if (json instanceof Map) {
             List<Object> l = JsonAccess.getList(JsonAccess.asMap(json, "rules document"), "rules");
             items = l == null ? List.of() : l;
         } else {
@@ -36,7 +38,7 @@ public final class RulesParser {
             try {
                 out.add(Rule.fromJson(JsonAccess.asMap(item, "rule")));
             } catch (RuntimeException e) {
-                LOG.log(System.Logger.Level.WARNING, "skipping invalid rule " + Json.write(item) + ": " + e.getMessage());
+                LOG.warn("skipping invalid rule {}: {}", Json.write(item), e.getMessage());
             }
         }
         return out;

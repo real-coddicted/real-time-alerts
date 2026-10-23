@@ -1,0 +1,62 @@
+{
+  "engine": {
+    "outputIntervalMs": ${OUTPUT_INTERVAL_MS:-1000},
+    "keepTicking": false,
+    "zone": "UTC",
+    "alertIdBytes": 6,
+    "timeBasis": "EVENT"
+  },
+  "rules": { "type": "file", "path": "rules.json", "refreshMs": 30000 },
+  "kafka": {
+    "bootstrapServers": "${KAFKA_BOOTSTRAP:-localhost:9092}",
+    "groupId": "security-alerting-pipeline"
+  },
+  "sources": [
+    { "name": "auth-events", "topic": "security.auth.window_stats", "format": "json", "offsetReset": "${OFFSET_RESET:-latest}" },
+    { "name": "netflow", "topic": "security.netflow.host_egress", "format": "json", "offsetReset": "${OFFSET_RESET:-latest}" }
+  ],
+  "sink": { "topic": "security.alerts" },
+  "streams": [
+    {
+      "name": "auth-user",
+      "source": "auth-events",
+      "timestamp": "window_end",
+      "steps": [ { "filter": { "field": "user", "op": "exists" } } ],
+      "key": {
+        "scope": "USER",
+        "attributes": { "tenant": "tenant", "user": "user", "idp": "idp" }
+      },
+      "subjects": {
+        "FAILED_LOGIN_RATIO": {
+          "subject": { "name": "failures", "value": "counts.failures" },
+          "compare": { "name": "attempts", "value": "counts.attempts" }
+        },
+        "FAILED_LOGINS": {
+          "subject": { "name": "failures", "value": "counts.failures" }
+        },
+        "DISTINCT_SOURCE_IPS": {
+          "subject": { "name": "distinct_ips", "value": "counts.distinct_source_ips" }
+        }
+      }
+    },
+    {
+      "name": "egress-host",
+      "source": "netflow",
+      "timestamp": "window_end",
+      "steps": [
+        { "filter": { "field": "direction", "op": "eq", "value": "outbound" } },
+        { "explode": { "path": "hosts", "as": "host" } }
+      ],
+      "key": {
+        "scope": "HOST",
+        "attributes": { "host": "host.value.name", "env": "host.value.env", "site": "site" }
+      },
+      "subjects": {
+        "EGRESS_BYTES": {
+          "subject": { "name": "bytes_out", "value": "host.value.bytes_out" },
+          "compare": { "name": "baseline_bytes_out", "value": "host.value.baseline_bytes_out" }
+        }
+      }
+    }
+  ]
+}

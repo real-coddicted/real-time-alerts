@@ -23,14 +23,14 @@ public final class JsonAccess {
     public static String getString(Map<String, Object> m, String key, String def) {
         Object v = m.get(key);
         if (v == null) return def;
-        if (v instanceof BigDecimal d) return d.toPlainString();
+        if (v instanceof BigDecimal) return ((BigDecimal) v).toPlainString();
         return v.toString();
     }
 
     public static long getLong(Map<String, Object> m, String key, long def) {
         Object v = m.get(key);
         if (v == null) return def;
-        if (v instanceof Number n) return new BigDecimal(n.toString()).longValueExact();
+        if (v instanceof Number) return new BigDecimal(v.toString()).longValueExact();
         return Long.parseLong(v.toString().trim());
     }
 
@@ -41,16 +41,13 @@ public final class JsonAccess {
     public static boolean getBoolean(Map<String, Object> m, String key, boolean def) {
         Object v = m.get(key);
         if (v == null) return def;
-        if (v instanceof Boolean b) return b;
+        if (v instanceof Boolean) return (Boolean) v;
         return Boolean.parseBoolean(v.toString().trim());
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> getMap(Map<String, Object> m, String key) {
         Object v = m.get(key);
-        if (v == null) return null;
-        if (!(v instanceof Map)) throw new IllegalArgumentException("field '" + key + "' must be an object");
-        return (Map<String, Object>) v;
+        return v == null ? null : asMap(v, "field '" + key + "'");
     }
 
     public static Map<String, Object> requireMap(Map<String, Object> m, String key) {

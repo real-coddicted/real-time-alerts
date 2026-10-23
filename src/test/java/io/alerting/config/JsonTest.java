@@ -1,14 +1,14 @@
 package io.alerting.config;
 
 import io.alerting.json.Json;
-import io.alerting.testing.Test;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import static io.alerting.testing.Assert.assertEquals;
-import static io.alerting.testing.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JsonTest {
     @Test

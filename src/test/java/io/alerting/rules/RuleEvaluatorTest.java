@@ -5,12 +5,12 @@ import io.alerting.model.AlertValue;
 import io.alerting.model.Metric;
 import io.alerting.model.NameValuePair;
 import io.alerting.model.Rule;
-import io.alerting.testing.Test;
+import org.junit.jupiter.api.Test;
 import io.alerting.threshold.ChainedThresholdEvaluator;
 
-import static io.alerting.testing.Assert.assertEquals;
-import static io.alerting.testing.Assert.assertFalse;
-import static io.alerting.testing.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RuleEvaluatorTest {
     private final RuleEvaluator evaluator = new RuleEvaluator(ChainedThresholdEvaluator.standard());

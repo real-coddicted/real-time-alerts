@@ -31,13 +31,8 @@ public final class Json {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> parseObject(String text) {
-        Object v = parse(text);
-        if (!(v instanceof Map)) {
-            throw new IllegalArgumentException("expected a JSON object");
-        }
-        return (Map<String, Object>) v;
+        return JsonAccess.asMap(parse(text), "JSON document");
     }
 
     public static String write(Object value) {
@@ -49,16 +44,16 @@ public final class Json {
     private static void write(StringBuilder sb, Object v) {
         if (v == null) {
             sb.append("null");
-        } else if (v instanceof String s) {
-            writeString(sb, s);
-        } else if (v instanceof BigDecimal d) {
-            sb.append(d.toPlainString());
+        } else if (v instanceof String) {
+            writeString(sb, (String) v);
+        } else if (v instanceof BigDecimal) {
+            sb.append(((BigDecimal) v).toPlainString());
         } else if (v instanceof Number || v instanceof Boolean) {
             sb.append(v);
-        } else if (v instanceof Map<?, ?> m) {
+        } else if (v instanceof Map) {
             sb.append('{');
             boolean first = true;
-            for (Map.Entry<?, ?> e : m.entrySet()) {
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) v).entrySet()) {
                 if (!first) sb.append(',');
                 first = false;
                 writeString(sb, String.valueOf(e.getKey()));
@@ -66,19 +61,19 @@ public final class Json {
                 write(sb, e.getValue());
             }
             sb.append('}');
-        } else if (v instanceof Iterable<?> it) {
+        } else if (v instanceof Iterable) {
             sb.append('[');
             boolean first = true;
-            for (Object o : it) {
+            for (Object o : (Iterable<?>) v) {
                 if (!first) sb.append(',');
                 first = false;
                 write(sb, o);
             }
             sb.append(']');
-        } else if (v instanceof Object[] arr) {
-            write(sb, Arrays.asList(arr));
-        } else if (v instanceof Enum<?> e) {
-            writeString(sb, e.name());
+        } else if (v instanceof Object[]) {
+            write(sb, Arrays.asList((Object[]) v));
+        } else if (v instanceof Enum) {
+            writeString(sb, ((Enum<?>) v).name());
         } else {
             writeString(sb, v.toString());
         }
@@ -89,18 +84,27 @@ public final class Json {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"' -> sb.append("\\\"");
-                case '\\' -> sb.append("\\\\");
-                case '\n' -> sb.append("\\n");
-                case '\r' -> sb.append("\\r");
-                case '\t' -> sb.append("\\t");
-                default -> {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
                     if (c < 0x20) {
                         sb.append(String.format("\\u%04x", (int) c));
                     } else {
                         sb.append(c);
                     }
-                }
             }
         }
         sb.append('"');
@@ -125,15 +129,22 @@ public final class Json {
         Object readValue() {
             if (pos >= s.length()) throw error("unexpected end of input");
             char c = s.charAt(pos);
-            return switch (c) {
-                case '{' -> readObject();
-                case '[' -> readArray();
-                case '"' -> readString();
-                case 't' -> literal("true", Boolean.TRUE);
-                case 'f' -> literal("false", Boolean.FALSE);
-                case 'n' -> literal("null", null);
-                default -> readNumber();
-            };
+            switch (c) {
+                case '{':
+                    return readObject();
+                case '[':
+                    return readArray();
+                case '"':
+                    return readString();
+                case 't':
+                    return literal("true", Boolean.TRUE);
+                case 'f':
+                    return literal("false", Boolean.FALSE);
+                case 'n':
+                    return literal("null", null);
+                default:
+                    return readNumber();
+            }
         }
 
         private Object literal(String word, Object value) {
@@ -193,17 +204,32 @@ public final class Json {
                 if (c == '\\') {
                     char e = s.charAt(pos++);
                     switch (e) {
-                        case '"', '\\', '/' -> sb.append(e);
-                        case 'b' -> sb.append('\b');
-                        case 'f' -> sb.append('\f');
-                        case 'n' -> sb.append('\n');
-                        case 'r' -> sb.append('\r');
-                        case 't' -> sb.append('\t');
-                        case 'u' -> {
+                        case '"':
+                        case '\\':
+                        case '/':
+                            sb.append(e);
+                            break;
+                        case 'b':
+                            sb.append('\b');
+                            break;
+                        case 'f':
+                            sb.append('\f');
+                            break;
+                        case 'n':
+                            sb.append('\n');
+                            break;
+                        case 'r':
+                            sb.append('\r');
+                            break;
+                        case 't':
+                            sb.append('\t');
+                            break;
+                        case 'u':
                             sb.append((char) Integer.parseInt(s.substring(pos, pos + 4), 16));
                             pos += 4;
-                        }
-                        default -> throw error("bad escape");
+                            break;
+                        default:
+                            throw error("bad escape");
                     }
                 } else if (c < 0x20) {
                     throw error("control character in string");

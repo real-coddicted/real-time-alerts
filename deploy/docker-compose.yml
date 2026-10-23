@@ -1,0 +1,99 @@
+# Self-hosted stack: Kafka (KRaft), Garage (S3-compatible checkpoint/savepoint storage) and a Flink 1.19
+# session cluster running the Beam alerting job. See deploy/README.md for the full workflow.
+#
+#   ./deploy/scripts/init-env.sh            # one-time: generates deploy/.env with random secrets
+#   ./gradlew shadowJar && docker compose -f deploy/docker-compose.yml up -d --build
+#   ./deploy/scripts/garage-init.sh         # one-time: layout, bucket and access key
+#   ./deploy/scripts/submit.sh              # start the job
+name: real-time-alerts
+
+x-flink: &flink
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  image: real-time-alerts-flink:local
+  volumes:
+    # Pipeline configs and rules are read at submit time (client) and by TaskManagers (rules refresh).
+    - ../examples:/opt/flink/usrlib/examples:ro
+  environment:
+    FLINK_PROPERTIES: |
+      jobmanager.rpc.address: jobmanager
+      taskmanager.numberOfTaskSlots: ${TASK_SLOTS:-4}
+      parallelism.default: ${PARALLELISM:-2}
+      jobmanager.memory.process.size: 1600m
+      taskmanager.memory.process.size: ${TASKMANAGER_MEMORY:-2048m}
+      state.backend.type: rocksdb
+      state.backend.incremental: true
+      state.checkpoints.dir: s3://${GARAGE_BUCKET:-flink}/checkpoints
+      state.savepoints.dir: s3://${GARAGE_BUCKET:-flink}/savepoints
+      execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+      s3.endpoint: ${S3_ENDPOINT:-http://garage:3900}
+      s3.path.style.access: true
+      # Not `s3.endpoint.region`: Flink 1.19's nested YAML config drops it next to `s3.endpoint`.
+      fs.s3a.endpoint.region: ${S3_REGION:-garage}
+      # Garage rejects multi-object deletes of keys that don't exist; S3A's directory-marker cleanup after
+      # every file write then fails and stalls RocksDB checkpoint uploads for minutes. Keep markers instead.
+      fs.s3a.directory.marker.retention: keep
+      s3.access-key: ${GARAGE_ACCESS_KEY}
+      s3.secret-key: ${GARAGE_SECRET_KEY}
+  depends_on:
+    kafka:
+      condition: service_healthy
+    garage:
+      condition: service_started
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 4
+    ports:
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  garage:
+    image: dxflrs/garage:v1.0.1
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    ports:
+      - "3900:3900"
+
+  jobmanager:
+    <<: *flink
+    command: jobmanager
+    ports:
+      - "8081:8081"
+
+  taskmanager:
+    <<: *flink
+    command: taskmanager
+    depends_on:
+      - jobmanager
+
+volumes:
+  kafka-data:
+  garage-meta:
+  garage-data:

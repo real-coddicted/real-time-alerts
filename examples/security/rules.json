@@ -1,0 +1,21 @@
+{
+  "rules": [
+    { "id": "SEC-1", "version": 1, "severity": "HIGH",
+      "subject": "FAILED_LOGIN_RATIO", "scope": "USER",
+      "fire":    { "type": "RATIO", "operator": "GT", "value": "0.5", "expiryMs": 3600000 },
+      "resolve": { "type": "RATIO", "operator": "LT", "value": "0.2", "minTimeToResolveMs": 300000 } },
+
+    { "id": "SEC-2", "version": 1, "severity": "CRITICAL",
+      "subject": "FAILED_LOGINS", "scope": "USER", "match": { "idp": ["okta", "azuread"] },
+      "fire":    { "type": "ABSOLUTE", "operator": "GTE", "value": "50", "expiryMs": 3600000 } },
+
+    { "id": "SEC-3", "version": 1, "severity": "MEDIUM",
+      "subject": "DISTINCT_SOURCE_IPS", "scope": "USER", "match": { "tenant": "acme" },
+      "fire":    { "type": "ABSOLUTE", "operator": "GT", "value": "10", "expiryMs": -1 } },
+
+    { "id": "SEC-4", "version": 1, "severity": "HIGH",
+      "subject": "EGRESS_BYTES", "scope": "HOST", "match": { "env": "prod" },
+      "fire":    { "type": "RELATIVE", "operator": "GT", "value": "3", "expiryMs": 7200000 },
+      "resolve": { "type": "RELATIVE", "operator": "LT", "value": "0.5", "minTimeToResolveMs": 0 } }
+  ]
+}
